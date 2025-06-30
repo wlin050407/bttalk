@@ -521,7 +521,7 @@ function App() {
   };
 
   // 如果不支持Web Bluetooth API，显示兼容性提示
-  if (!browserInfo.isSupported) {
+  if (!browserInfo.isSupported && chatMode === 'bluetooth') {
     return (
       <div className="App">
         <div className="container">
