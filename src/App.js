@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
-import QRCode from 'qrcode.react';
+import { QRCode } from 'qrcode.react';
 import { Html5Qrcode } from 'html5-qrcode';
 
 // 聊天服务UUID - 专门为网页聊天设计
