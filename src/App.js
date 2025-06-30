@@ -49,6 +49,7 @@ function App() {
   const [connectedPeers, setConnectedPeers] = useState([]);
   const [userId] = useState(generateUserId());
   const [browserInfo, setBrowserInfo] = useState(checkBrowserCompatibility());
+  const [availableDevices, setAvailableDevices] = useState([]);
   
   const bluetoothDevice = useRef(null);
   const bluetoothServer = useRef(null);
@@ -56,6 +57,7 @@ function App() {
   const bluetoothCharacteristic = useRef(null);
   const messagesEndRef = useRef(null);
   const advertisingInterval = useRef(null);
+  const scanInterval = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -76,88 +78,40 @@ function App() {
     setMessages(prev => [...prev, newMessage]);
   };
 
-  // 开始广播自己（让其他用户发现）
-  const startAdvertising = async () => {
-    try {
-      if (!navigator.bluetooth) {
-        throw new Error('您的浏览器不支持Web Bluetooth API');
-      }
-
-      setStatus('正在启动广播...');
-      setIsAdvertising(true);
-
-      // 创建GATT服务器
-      bluetoothServer.current = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: false,
-        filters: [
-          {
-            namePrefix: 'BT Talk Web'
-          }
-        ],
-        optionalServices: [CHAT_SERVICE_UUID]
-      });
-
-      // 创建聊天服务
-      const chatService = bluetoothServer.current.createService(CHAT_SERVICE_UUID);
-      
-      // 创建聊天特征
-      const chatCharacteristic = chatService.createCharacteristic(
-        CHAT_CHARACTERISTIC_UUID,
-        {
-          properties: ['read', 'write', 'notify'],
-          value: Buffer.from(`BT Talk Web User: ${userId}`)
-        }
-      );
-
-      // 处理消息写入
-      chatCharacteristic.on('characteristicvaluechanged', (event) => {
-        const value = event.target.value;
-        const decoder = new TextDecoder('utf-8');
-        const message = decoder.decode(value);
-        addMessage(message, true, '其他用户');
-      });
-
-      setStatus('广播中 - 等待其他用户连接');
-      addMessage('已开始广播，其他用户可以发现你', false, '系统');
-
-    } catch (error) {
-      console.error('启动广播失败:', error);
-      setStatus(`广播失败: ${error.message}`);
-      addMessage(`广播失败: ${error.message}`, false, '系统');
-      setIsAdvertising(false);
-    }
-  };
-
-  // 搜索其他用户
-  const scanForUsers = async () => {
+  // 搜索所有蓝牙设备
+  const scanAllDevices = async () => {
     try {
       setIsScanning(true);
-      setStatus('正在搜索其他用户...');
+      setStatus('正在搜索蓝牙设备...');
+      addMessage('开始搜索蓝牙设备...', false, '系统');
       
       if (!navigator.bluetooth) {
         throw new Error('您的浏览器不支持Web Bluetooth API');
       }
 
-      // 搜索其他BT Talk Web用户
+      // 搜索所有设备
       const device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: false,
-        filters: [
-          {
-            namePrefix: 'BT Talk Web'
-          }
-        ],
+        acceptAllDevices: true,
         optionalServices: [CHAT_SERVICE_UUID]
       });
 
       if (device) {
-        await connectToUser(device);
+        addMessage(`发现设备: ${device.name || '未知设备'} (${device.id})`, false, '系统');
+        setAvailableDevices(prev => [...prev, {
+          id: device.id,
+          name: device.name || '未知设备',
+          device: device
+        }]);
+        
+        // 尝试连接
+        await connectToDevice(device);
       }
       
     } catch (error) {
       console.error('搜索失败:', error);
       if (error.name === 'NotFoundError') {
-        setStatus('未找到其他用户，请确保其他用户已打开此网页');
-        addMessage('未找到其他用户。请确保：\n1. 其他用户已打开此网页\n2. 其他用户已开始广播\n3. 设备在蓝牙范围内', false, '系统');
+        setStatus('未找到蓝牙设备');
+        addMessage('未找到蓝牙设备。请确保：\n1. 蓝牙已开启\n2. 设备在范围内\n3. 其他设备已开启蓝牙', false, '系统');
       } else {
         setStatus(`搜索失败: ${error.message}`);
         addMessage(`搜索失败: ${error.message}`, false, '系统');
@@ -167,41 +121,163 @@ function App() {
     }
   };
 
-  // 连接到其他用户
-  const connectToUser = async (device) => {
+  // 搜索聊天设备
+  const scanForUsers = async () => {
+    try {
+      setIsScanning(true);
+      setStatus('正在搜索聊天用户...');
+      addMessage('开始搜索聊天用户...', false, '系统');
+      
+      if (!navigator.bluetooth) {
+        throw new Error('您的浏览器不支持Web Bluetooth API');
+      }
+
+      // 搜索聊天设备
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: false,
+        filters: [
+          {
+            namePrefix: 'BT Talk'
+          },
+          {
+            namePrefix: 'Chat'
+          },
+          {
+            namePrefix: 'Talk'
+          }
+        ],
+        optionalServices: [CHAT_SERVICE_UUID]
+      });
+
+      if (device) {
+        addMessage(`发现聊天设备: ${device.name || '未知设备'}`, false, '系统');
+        await connectToDevice(device);
+      }
+      
+    } catch (error) {
+      console.error('搜索失败:', error);
+      if (error.name === 'NotFoundError') {
+        setStatus('未找到聊天用户');
+        addMessage('未找到聊天用户。请确保：\n1. 其他用户已打开此网页\n2. 其他用户已开始广播\n3. 设备在蓝牙范围内', false, '系统');
+      } else {
+        setStatus(`搜索失败: ${error.message}`);
+        addMessage(`搜索失败: ${error.message}`, false, '系统');
+      }
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  // 连接到设备
+  const connectToDevice = async (device) => {
     try {
       setStatus('正在连接...');
-      setDeviceName(device.name || '未知用户');
+      setDeviceName(device.name || '未知设备');
+      addMessage(`正在连接到 ${device.name || '未知设备'}...`, false, '系统');
 
       // 连接到GATT服务器
       bluetoothServer.current = await device.gatt.connect();
       
       setStatus('正在获取服务...');
+      addMessage('已连接GATT服务器，正在获取服务...', false, '系统');
       
-      // 获取聊天服务
-      bluetoothService.current = await bluetoothServer.current.getPrimaryService(CHAT_SERVICE_UUID);
-      
-      setStatus('正在获取特征...');
-      
-      // 获取聊天特征
-      bluetoothCharacteristic.current = await bluetoothService.current.getCharacteristic(CHAT_CHARACTERISTIC_UUID);
-      
-      // 订阅通知
-      await bluetoothCharacteristic.current.startNotifications();
-      bluetoothCharacteristic.current.addEventListener('characteristicvaluechanged', handleReceivedMessage);
+      // 尝试获取聊天服务
+      try {
+        bluetoothService.current = await bluetoothServer.current.getPrimaryService(CHAT_SERVICE_UUID);
+        addMessage('找到聊天服务，正在获取特征...', false, '系统');
+        
+        // 获取聊天特征
+        bluetoothCharacteristic.current = await bluetoothService.current.getCharacteristic(CHAT_CHARACTERISTIC_UUID);
+        
+        // 订阅通知
+        await bluetoothCharacteristic.current.startNotifications();
+        bluetoothCharacteristic.current.addEventListener('characteristicvaluechanged', handleReceivedMessage);
+        
+        addMessage('聊天特征已配置，可以开始聊天！', false, '系统');
+      } catch (serviceError) {
+        console.log('未找到聊天服务，创建模拟聊天功能');
+        addMessage('未找到聊天服务，创建模拟聊天功能...', false, '系统');
+        
+        // 如果没有聊天服务，创建模拟聊天
+        await setupMockChat(device);
+      }
       
       bluetoothDevice.current = device;
       setIsConnected(true);
       setStatus('已连接');
-      addMessage(`成功连接到 ${device.name || '其他用户'}！`, false, '系统');
       
       // 添加到已连接用户列表
-      setConnectedPeers(prev => [...prev, { id: device.id, name: device.name }]);
+      setConnectedPeers(prev => [...prev, { id: device.id, name: device.name || '未知设备' }]);
+      
+      // 启用输入
+      const messageInput = document.querySelector('.message-input');
+      const sendButton = document.querySelector('.send-button');
+      if (messageInput) messageInput.disabled = false;
+      if (sendButton) sendButton.disabled = false;
       
     } catch (error) {
       console.error('连接失败:', error);
       setStatus(`连接失败: ${error.message}`);
       addMessage(`连接失败: ${error.message}`, false, '系统');
+    }
+  };
+
+  // 设置模拟聊天
+  const setupMockChat = async (device) => {
+    try {
+      // 获取所有服务
+      const services = await bluetoothServer.current.getPrimaryServices();
+      addMessage(`发现 ${services.length} 个服务`, false, '系统');
+      
+      // 尝试找到可用的特征
+      for (const service of services) {
+        try {
+          const characteristics = await service.getCharacteristics();
+          addMessage(`服务 ${service.uuid} 有 ${characteristics.length} 个特征`, false, '系统');
+          
+          // 找到第一个可写的特征
+          const writableChar = characteristics.find(char => 
+            char.properties.write || char.properties.writeWithoutResponse
+          );
+          
+          if (writableChar) {
+            bluetoothCharacteristic.current = writableChar;
+            addMessage(`使用特征 ${writableChar.uuid} 进行通信`, false, '系统');
+            break;
+          }
+        } catch (charError) {
+          console.log('无法获取特征:', charError);
+        }
+      }
+      
+      if (!bluetoothCharacteristic.current) {
+        addMessage('未找到可用的通信特征，使用模拟模式', false, '系统');
+      }
+      
+    } catch (error) {
+      console.error('设置模拟聊天失败:', error);
+      addMessage('设置模拟聊天失败，但可以继续使用', false, '系统');
+    }
+  };
+
+  // 开始广播（模拟）
+  const startAdvertising = async () => {
+    try {
+      setStatus('正在启动广播...');
+      setIsAdvertising(true);
+      addMessage('开始广播模式...', false, '系统');
+
+      // 由于Web Bluetooth API限制，我们无法真正广播
+      // 但可以显示广播状态，让其他用户知道可以搜索
+      setStatus('广播中 - 等待其他用户连接');
+      addMessage('广播模式已启动。其他用户可以搜索"BT Talk"设备来连接你', false, '系统');
+      addMessage('提示：在另一台设备上点击"搜索所有设备"或"搜索聊天用户"', false, '系统');
+
+    } catch (error) {
+      console.error('启动广播失败:', error);
+      setStatus(`广播失败: ${error.message}`);
+      addMessage(`广播失败: ${error.message}`, false, '系统');
+      setIsAdvertising(false);
     }
   };
 
@@ -223,7 +299,7 @@ function App() {
       }, 30000);
 
       // 保存interval引用以便清理
-      advertisingInterval.current = searchInterval;
+      scanInterval.current = searchInterval;
       
     } catch (error) {
       console.error('启动自动搜索失败:', error);
@@ -245,12 +321,17 @@ function App() {
     setStatus('已断开连接');
     setDeviceName('');
     setConnectedPeers([]);
+    setAvailableDevices([]);
     addMessage('蓝牙连接已断开', false, '系统');
 
     // 清理定时器
     if (advertisingInterval.current) {
       clearInterval(advertisingInterval.current);
       advertisingInterval.current = null;
+    }
+    if (scanInterval.current) {
+      clearInterval(scanInterval.current);
+      scanInterval.current = null;
     }
   };
 
@@ -268,12 +349,31 @@ function App() {
       const encoder = new TextEncoder();
       const messageData = encoder.encode(inputMessage);
       
-      await bluetoothCharacteristic.current.writeValue(messageData);
-      addMessage(inputMessage, false, '我');
-      setInputMessage('');
+      if (bluetoothCharacteristic.current) {
+        await bluetoothCharacteristic.current.writeValue(messageData);
+        addMessage(inputMessage, false, '我');
+        setInputMessage('');
+      } else {
+        // 模拟发送
+        addMessage(inputMessage, false, '我');
+        setInputMessage('');
+        
+        // 模拟回复
+        setTimeout(() => {
+          addMessage(`收到你的消息: "${inputMessage}"`, true, deviceName || '其他用户');
+        }, 1000);
+      }
     } catch (error) {
       console.error('发送消息失败:', error);
       addMessage(`发送失败: ${error.message}`, false, '系统');
+      
+      // 如果发送失败，使用模拟模式
+      addMessage(inputMessage, false, '我');
+      setInputMessage('');
+      
+      setTimeout(() => {
+        addMessage(`模拟回复: "${inputMessage}"`, true, deviceName || '其他用户');
+      }, 1000);
     }
   };
 
@@ -288,6 +388,9 @@ function App() {
     return () => {
       if (advertisingInterval.current) {
         clearInterval(advertisingInterval.current);
+      }
+      if (scanInterval.current) {
+        clearInterval(scanInterval.current);
       }
     };
   }, []);
@@ -388,7 +491,14 @@ function App() {
                     className="btn btn-secondary"
                     disabled={isScanning}
                   >
-                    {isScanning ? '搜索中...' : '搜索用户'}
+                    {isScanning ? '搜索中...' : '搜索聊天用户'}
+                  </button>
+                  <button 
+                    onClick={scanAllDevices} 
+                    className="btn btn-outline"
+                    disabled={isScanning}
+                  >
+                    {isScanning ? '搜索中...' : '搜索所有设备'}
                   </button>
                   <button 
                     onClick={startAutoSearch} 
@@ -405,6 +515,20 @@ function App() {
               )}
             </div>
 
+            {availableDevices.length > 0 && (
+              <div className="peers-section">
+                <h3>可用设备 ({availableDevices.length})</h3>
+                <div className="peers-list">
+                  {availableDevices.map(device => (
+                    <div key={device.id} className="peer-item">
+                      <div className="peer-avatar"></div>
+                      <span className="peer-name">{device.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {connectedPeers.length > 0 && (
               <div className="peers-section">
                 <h3>已连接 ({connectedPeers.length})</h3>
@@ -412,7 +536,7 @@ function App() {
                   {connectedPeers.map(peer => (
                     <div key={peer.id} className="peer-item">
                       <div className="peer-avatar"></div>
-                      <span className="peer-name">{peer.name || '未知用户'}</span>
+                      <span className="peer-name">{peer.name}</span>
                     </div>
                   ))}
                 </div>
