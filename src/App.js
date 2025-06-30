@@ -10,6 +10,31 @@ const generateUserId = () => {
   return 'user_' + Math.random().toString(36).substr(2, 9);
 };
 
+// 检测浏览器兼容性
+const checkBrowserCompatibility = () => {
+  const userAgent = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(userAgent);
+  const isAndroid = /Android/.test(userAgent);
+  const isChrome = /Chrome/.test(userAgent) && !/Edge/.test(userAgent);
+  const isEdge = /Edge/.test(userAgent);
+  const isOpera = /Opera|OPR/.test(userAgent);
+  const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
+  
+  const hasWebBluetooth = 'bluetooth' in navigator;
+  
+  return {
+    isIOS,
+    isAndroid,
+    isChrome,
+    isEdge,
+    isOpera,
+    isSafari,
+    hasWebBluetooth,
+    isSupported: hasWebBluetooth && (isChrome || isEdge || isOpera),
+    isMobile: isIOS || isAndroid
+  };
+};
+
 function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -20,6 +45,7 @@ function App() {
   const [isAdvertising, setIsAdvertising] = useState(false);
   const [connectedPeers, setConnectedPeers] = useState([]);
   const [userId] = useState(generateUserId());
+  const [browserInfo, setBrowserInfo] = useState(checkBrowserCompatibility());
   
   const bluetoothDevice = useRef(null);
   const bluetoothServer = useRef(null);
@@ -263,6 +289,62 @@ function App() {
     };
   }, []);
 
+  // 如果不支持Web Bluetooth API，显示兼容性提示
+  if (!browserInfo.isSupported) {
+    return (
+      <div className="App">
+        <div className="container">
+          <header className="header">
+            <h1>📱 BT Talk Web</h1>
+            <p>基于网页的蓝牙聊天 - 自动发现其他用户</p>
+          </header>
+
+          <div className="compatibility-warning">
+            <div className="warning-icon">⚠️</div>
+            <h2>浏览器兼容性提示</h2>
+            
+            {browserInfo.isIOS ? (
+              <div className="ios-warning">
+                <h3>iOS设备检测到</h3>
+                <p>Safari浏览器不支持Web Bluetooth API，建议：</p>
+                <ul>
+                  <li>使用Chrome for iOS</li>
+                  <li>使用Edge for iOS</li>
+                  <li>使用Opera for iOS</li>
+                  <li>或下载原生iOS应用</li>
+                </ul>
+                <div className="download-links">
+                  <a href="https://apps.apple.com/app/chrome/id535886823" target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+                    下载Chrome for iOS
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="general-warning">
+                <p>您的浏览器不支持Web Bluetooth API</p>
+                <p>支持的浏览器：</p>
+                <ul>
+                  <li>Chrome 56+ (桌面版/Android)</li>
+                  <li>Edge 79+ (桌面版/Android)</li>
+                  <li>Opera 43+ (桌面版/Android)</li>
+                </ul>
+                <p>请使用支持的浏览器访问此应用</p>
+              </div>
+            )}
+
+            <div className="browser-info">
+              <h4>当前浏览器信息：</h4>
+              <p>设备类型: {browserInfo.isMobile ? '移动设备' : '桌面设备'}</p>
+              <p>操作系统: {browserInfo.isIOS ? 'iOS' : browserInfo.isAndroid ? 'Android' : '其他'}</p>
+              <p>浏览器: {browserInfo.isChrome ? 'Chrome' : browserInfo.isEdge ? 'Edge' : browserInfo.isOpera ? 'Opera' : browserInfo.isSafari ? 'Safari' : '其他'}</p>
+              <p>Web Bluetooth支持: {browserInfo.hasWebBluetooth ? '是' : '否'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       <div className="container">
@@ -270,6 +352,9 @@ function App() {
           <h1>📱 BT Talk Web</h1>
           <p>基于网页的蓝牙聊天 - 自动发现其他用户</p>
           <div className="user-id">用户ID: {userId}</div>
+          {browserInfo.isMobile && (
+            <div className="mobile-indicator">📱 移动端模式</div>
+          )}
         </header>
 
         <div className="connection-panel">
