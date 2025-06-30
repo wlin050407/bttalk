@@ -520,67 +520,6 @@ function App() {
     }
   };
 
-  // 如果不支持Web Bluetooth API，显示兼容性提示
-  if (!browserInfo.isSupported && chatMode === 'bluetooth') {
-    return (
-      <div className="App">
-        <div className="container">
-          <header className="header">
-            <h1>BT Talk Web</h1>
-            <p>基于网页的蓝牙聊天</p>
-          </header>
-
-          <div className="compatibility-warning">
-            <div className="warning-icon">!</div>
-            <h2>浏览器兼容性提示</h2>
-            
-            {browserInfo.isIOS ? (
-              <div className="ios-warning">
-                <h3>iOS设备检测到</h3>
-                <p>iOS系统限制：所有iOS浏览器都不支持Web Bluetooth API</p>
-                <p>解决方案：</p>
-                <ul>
-                  <li>使用Android设备</li>
-                  <li>使用桌面设备（Windows/Mac/Linux）</li>
-                  <li>下载原生iOS应用（需要开发者账号）</li>
-                  <li>使用其他聊天应用</li>
-                </ul>
-                <div className="download-links">
-                  <a href="https://play.google.com/store/apps/details?id=com.android.chrome" target="_blank" rel="noopener noreferrer" className="btn btn-primary">
-                    下载Chrome for Android
-                  </a>
-                  <a href="https://www.google.com/chrome/" target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
-                    下载Chrome桌面版
-                  </a>
-                </div>
-              </div>
-            ) : (
-              <div className="general-warning">
-                <p>您的浏览器不支持Web Bluetooth API</p>
-                <p>支持的平台和浏览器：</p>
-                <ul>
-                  <li>Chrome 56+ (桌面版/Android)</li>
-                  <li>Edge 79+ (桌面版/Android)</li>
-                  <li>Opera 43+ (桌面版/Android)</li>
-                </ul>
-                <p><strong>注意：iOS设备不支持Web Bluetooth API</strong></p>
-                <p>请使用支持的浏览器访问此应用</p>
-              </div>
-            )}
-
-            <div className="browser-info">
-              <h4>当前浏览器信息：</h4>
-              <p>设备类型: {browserInfo.isMobile ? '移动设备' : '桌面设备'}</p>
-              <p>操作系统: {browserInfo.isIOS ? 'iOS' : browserInfo.isAndroid ? 'Android' : '其他'}</p>
-              <p>浏览器: {browserInfo.isChrome ? 'Chrome' : browserInfo.isEdge ? 'Edge' : browserInfo.isOpera ? 'Opera' : browserInfo.isSafari ? 'Safari' : '其他'}</p>
-              <p>Web Bluetooth支持: {browserInfo.hasWebBluetooth ? '是' : '否'}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="App">
       <div className="container">
