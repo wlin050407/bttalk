@@ -41,6 +41,7 @@ const checkBrowserCompatibility = () => {
 };
 
 function App() {
+  const [chatMode, setChatMode] = useState('bluetooth'); // 'bluetooth' | 'lan'
   const [isConnected, setIsConnected] = useState(false);
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -53,7 +54,6 @@ function App() {
   const [browserInfo, setBrowserInfo] = useState(checkBrowserCompatibility());
   const [availableDevices, setAvailableDevices] = useState([]);
   const [localDeviceInfo, setLocalDeviceInfo] = useState(null);
-  const [chatMode, setChatMode] = useState('bluetooth'); // 'bluetooth' | 'lan'
   const [ws, setWs] = useState(null);
   const [wsUrl, setWsUrl] = useState('');
   const [showQr, setShowQr] = useState(false);
