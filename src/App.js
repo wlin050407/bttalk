@@ -22,6 +22,9 @@ const checkBrowserCompatibility = () => {
   
   const hasWebBluetooth = 'bluetooth' in navigator;
   
+  // iOS上的所有浏览器都不支持Web Bluetooth API
+  const isSupported = hasWebBluetooth && (isChrome || isEdge || isOpera) && !isIOS;
+  
   return {
     isIOS,
     isAndroid,
@@ -30,7 +33,7 @@ const checkBrowserCompatibility = () => {
     isOpera,
     isSafari,
     hasWebBluetooth,
-    isSupported: hasWebBluetooth && (isChrome || isEdge || isOpera),
+    isSupported,
     isMobile: isIOS || isAndroid
   };
 };
@@ -306,28 +309,33 @@ function App() {
             {browserInfo.isIOS ? (
               <div className="ios-warning">
                 <h3>iOS设备检测到</h3>
-                <p>Safari浏览器不支持Web Bluetooth API，建议：</p>
+                <p>iOS系统限制：所有iOS浏览器都不支持Web Bluetooth API</p>
+                <p>解决方案：</p>
                 <ul>
-                  <li>使用Chrome for iOS</li>
-                  <li>使用Edge for iOS</li>
-                  <li>使用Opera for iOS</li>
-                  <li>或下载原生iOS应用</li>
+                  <li>使用Android设备</li>
+                  <li>使用桌面设备（Windows/Mac/Linux）</li>
+                  <li>下载原生iOS应用（需要开发者账号）</li>
+                  <li>使用其他聊天应用</li>
                 </ul>
                 <div className="download-links">
-                  <a href="https://apps.apple.com/app/chrome/id535886823" target="_blank" rel="noopener noreferrer" className="btn btn-primary">
-                    下载Chrome for iOS
+                  <a href="https://play.google.com/store/apps/details?id=com.android.chrome" target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+                    下载Chrome for Android
+                  </a>
+                  <a href="https://www.google.com/chrome/" target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
+                    下载Chrome桌面版
                   </a>
                 </div>
               </div>
             ) : (
               <div className="general-warning">
                 <p>您的浏览器不支持Web Bluetooth API</p>
-                <p>支持的浏览器：</p>
+                <p>支持的平台和浏览器：</p>
                 <ul>
                   <li>Chrome 56+ (桌面版/Android)</li>
                   <li>Edge 79+ (桌面版/Android)</li>
                   <li>Opera 43+ (桌面版/Android)</li>
                 </ul>
+                <p><strong>注意：iOS设备不支持Web Bluetooth API</strong></p>
                 <p>请使用支持的浏览器访问此应用</p>
               </div>
             )}
