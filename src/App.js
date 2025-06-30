@@ -298,12 +298,12 @@ function App() {
       <div className="App">
         <div className="container">
           <header className="header">
-            <h1>📱 BT Talk Web</h1>
-            <p>基于网页的蓝牙聊天 - 自动发现其他用户</p>
+            <h1>BT Talk Web</h1>
+            <p>基于网页的蓝牙聊天</p>
           </header>
 
           <div className="compatibility-warning">
-            <div className="warning-icon">⚠️</div>
+            <div className="warning-icon">!</div>
             <h2>浏览器兼容性提示</h2>
             
             {browserInfo.isIOS ? (
@@ -357,132 +357,125 @@ function App() {
     <div className="App">
       <div className="container">
         <header className="header">
-          <h1>📱 BT Talk Web</h1>
-          <p>基于网页的蓝牙聊天 - 自动发现其他用户</p>
-          <div className="user-id">用户ID: {userId}</div>
-          {browserInfo.isMobile && (
-            <div className="mobile-indicator">📱 移动端模式</div>
-          )}
-        </header>
-
-        <div className="connection-panel">
-          <div className="status-display">
-            <span className={`status-indicator ${isConnected ? 'connected' : 'disconnected'}`}></span>
-            <span className="status-text">{status}</span>
-            {deviceName && <span className="device-name">({deviceName})</span>}
-          </div>
-          
-          <div className="connection-buttons">
-            {!isConnected && !isAdvertising ? (
-              <div className="button-group">
-                <button 
-                  onClick={startAdvertising} 
-                  className="btn btn-primary"
-                  disabled={isScanning}
-                >
-                  开始广播
-                </button>
-                <button 
-                  onClick={scanForUsers} 
-                  className="btn btn-secondary"
-                  disabled={isScanning}
-                >
-                  {isScanning ? '搜索中...' : '搜索用户'}
-                </button>
-                <button 
-                  onClick={startAutoSearch} 
-                  className="btn btn-outline"
-                  disabled={isScanning}
-                >
-                  自动搜索
-                </button>
+          <div className="header-content">
+            <div className="header-left">
+              <h1>BT Talk Web</h1>
+              <div className="user-id">ID: {userId}</div>
+            </div>
+            <div className="header-right">
+              <div className="status-badge">
+                <span className={`status-dot ${isConnected ? 'connected' : 'disconnected'}`}></span>
+                {status}
               </div>
-            ) : (
-              <button onClick={disconnect} className="btn btn-secondary">
-                断开连接
-              </button>
-            )}
-          </div>
-        </div>
-
-        {connectedPeers.length > 0 && (
-          <div className="peers-panel">
-            <h4>已连接用户 ({connectedPeers.length})</h4>
-            <div className="peers-list">
-              {connectedPeers.map(peer => (
-                <span key={peer.id} className="peer-item">
-                  {peer.name || '未知用户'}
-                </span>
-              ))}
             </div>
           </div>
-        )}
+        </header>
 
-        <div className="chat-container">
-          <div className="messages">
-            {messages.length === 0 ? (
-              <div className="empty-state">
-                <p>还没有消息</p>
-                <p>开始广播或搜索其他用户开始聊天吧！</p>
-                <div className="tips">
-                  <h4>💡 使用提示：</h4>
-                  <ul>
-                    <li><strong>开始广播</strong>：让其他用户发现你</li>
-                    <li><strong>搜索用户</strong>：主动寻找其他用户</li>
-                    <li><strong>自动搜索</strong>：定期自动搜索其他用户</li>
-                    <li>所有打开此网页的用户都能相互发现</li>
-                  </ul>
+        <div className="main-content">
+          <div className="sidebar">
+            <div className="connection-controls">
+              {!isConnected && !isAdvertising ? (
+                <div className="button-group">
+                  <button 
+                    onClick={startAdvertising} 
+                    className="btn btn-primary"
+                    disabled={isScanning}
+                  >
+                    开始广播
+                  </button>
+                  <button 
+                    onClick={scanForUsers} 
+                    className="btn btn-secondary"
+                    disabled={isScanning}
+                  >
+                    {isScanning ? '搜索中...' : '搜索用户'}
+                  </button>
+                  <button 
+                    onClick={startAutoSearch} 
+                    className="btn btn-outline"
+                    disabled={isScanning}
+                  >
+                    自动搜索
+                  </button>
+                </div>
+              ) : (
+                <button onClick={disconnect} className="btn btn-danger">
+                  断开连接
+                </button>
+              )}
+            </div>
+
+            {connectedPeers.length > 0 && (
+              <div className="peers-section">
+                <h3>已连接 ({connectedPeers.length})</h3>
+                <div className="peers-list">
+                  {connectedPeers.map(peer => (
+                    <div key={peer.id} className="peer-item">
+                      <div className="peer-avatar"></div>
+                      <span className="peer-name">{peer.name || '未知用户'}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ) : (
-              messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`message ${message.isReceived ? 'received' : 'sent'}`}
-                >
-                  <div className="message-content">
-                    <div className="message-header">
-                      <span className="message-sender">{message.from}</span>
-                    </div>
-                    <p>{message.text}</p>
-                    <span className="message-time">{message.timestamp}</span>
-                  </div>
-                </div>
-              ))
             )}
-            <div ref={messagesEndRef} />
           </div>
 
-          <div className="input-area">
-            <input
-              type="text"
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="输入消息..."
-              disabled={!isConnected}
-              className="message-input"
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!isConnected || !inputMessage.trim()}
-              className="btn btn-primary send-btn"
-            >
-              发送
-            </button>
-          </div>
-        </div>
+          <div className="chat-area">
+            <div className="chat-header">
+              <h2>{deviceName || '聊天'}</h2>
+              {isConnected && <span className="online-indicator">在线</span>}
+            </div>
 
-        <div className="info-panel">
-          <h3>使用说明</h3>
-          <ul>
-            <li><strong>开始广播</strong>：让其他用户发现你</li>
-            <li><strong>搜索用户</strong>：主动寻找其他用户</li>
-            <li><strong>自动搜索</strong>：定期自动搜索其他用户</li>
-            <li>所有打开此网页的用户都能相互发现</li>
-            <li>支持近距离蓝牙通信，无需网络</li>
-            <li>需要HTTPS环境或localhost才能使用蓝牙功能</li>
-          </ul>
+            <div className="messages-container">
+              {messages.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-icon"></div>
+                  <h3>开始聊天</h3>
+                  <p>连接其他用户开始聊天</p>
+                </div>
+              ) : (
+                <div className="messages">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`message ${message.isReceived ? 'received' : 'sent'}`}
+                    >
+                      <div className="message-content">
+                        {message.from !== '我' && message.from !== '系统' && (
+                          <div className="message-sender">{message.from}</div>
+                        )}
+                        <div className="message-text">{message.text}</div>
+                        <div className="message-time">{message.timestamp}</div>
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </div>
+
+            <div className="input-container">
+              <input
+                type="text"
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="输入消息..."
+                disabled={!isConnected}
+                className="message-input"
+              />
+              <button
+                onClick={sendMessage}
+                disabled={!isConnected || !inputMessage.trim()}
+                className="send-button"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22,2 15,22 11,13 2,9"></polygon>
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
