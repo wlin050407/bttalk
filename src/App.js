@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
+import QRCode from 'qrcode.react';
+import { Html5Qrcode } from 'html5-qrcode';
 
 // 聊天服务UUID - 专门为网页聊天设计
 const CHAT_SERVICE_UUID = '00001234-0000-1000-8000-00805f9b34fb';
@@ -51,6 +53,12 @@ function App() {
   const [browserInfo, setBrowserInfo] = useState(checkBrowserCompatibility());
   const [availableDevices, setAvailableDevices] = useState([]);
   const [localDeviceInfo, setLocalDeviceInfo] = useState(null);
+  const [chatMode, setChatMode] = useState('bluetooth'); // 'bluetooth' | 'lan'
+  const [ws, setWs] = useState(null);
+  const [wsUrl, setWsUrl] = useState('');
+  const [showQr, setShowQr] = useState(false);
+  const [showScan, setShowScan] = useState(false);
+  const [scanError, setScanError] = useState('');
   
   const bluetoothDevice = useRef(null);
   const bluetoothServer = useRef(null);
@@ -59,6 +67,7 @@ function App() {
   const messagesEndRef = useRef(null);
   const advertisingInterval = useRef(null);
   const scanInterval = useRef(null);
+  const html5QrRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -343,23 +352,86 @@ function App() {
     addMessage(message, true, deviceName || '其他用户');
   };
 
+  // 局域网WebSocket连接
+  const connectLanChat = (url) => {
+    if (ws) ws.close();
+    const socket = new window.WebSocket(url);
+    setWs(socket);
+    setWsUrl(url);
+    setStatus('正在连接局域网聊天...');
+    addMessage(`正在连接: ${url}`, false, '系统');
+    socket.onopen = () => {
+      setStatus('局域网聊天已连接');
+      addMessage('局域网聊天已连接', false, '系统');
+      setIsConnected(true);
+    };
+    socket.onmessage = (event) => {
+      addMessage(event.data, true, '对方');
+    };
+    socket.onclose = () => {
+      setStatus('局域网聊天已断开');
+      setIsConnected(false);
+      addMessage('局域网聊天已断开', false, '系统');
+    };
+    socket.onerror = (e) => {
+      setStatus('WebSocket错误');
+      addMessage('WebSocket连接错误', false, '系统');
+    };
+  };
+
+  // 生成二维码内容
+  const getLanQrValue = () => {
+    return wsUrl || window.location.origin.replace(/^http/, 'ws') + ':3001';
+  };
+
+  // 启动扫码
+  const startScan = () => {
+    setShowScan(true);
+    setScanError('');
+    setTimeout(() => {
+      if (!html5QrRef.current) {
+        html5QrRef.current = new Html5Qrcode('qr-reader');
+      }
+      html5QrRef.current.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+          html5QrRef.current.stop();
+          setShowScan(false);
+          connectLanChat(decodedText);
+        },
+        (err) => setScanError(err?.toString() || '扫码失败')
+      );
+    }, 300);
+  };
+
+  // 停止扫码
+  const stopScan = () => {
+    setShowScan(false);
+    if (html5QrRef.current) {
+      html5QrRef.current.stop();
+    }
+  };
+
+  // 发送消息（支持WebSocket）
   const sendMessage = async () => {
     if (!inputMessage.trim() || !isConnected) return;
-
+    if (chatMode === 'lan' && ws) {
+      ws.send(inputMessage);
+      addMessage(inputMessage, false, '我');
+      setInputMessage('');
+      return;
+    }
     try {
       const encoder = new TextEncoder();
       const messageData = encoder.encode(inputMessage);
-      
       if (bluetoothCharacteristic.current) {
         await bluetoothCharacteristic.current.writeValue(messageData);
         addMessage(inputMessage, false, '我');
         setInputMessage('');
       } else {
-        // 模拟发送
         addMessage(inputMessage, false, '我');
         setInputMessage('');
-        
-        // 模拟回复
         setTimeout(() => {
           addMessage(`收到你的消息: "${inputMessage}"`, true, deviceName || '其他用户');
         }, 1000);
@@ -367,11 +439,8 @@ function App() {
     } catch (error) {
       console.error('发送消息失败:', error);
       addMessage(`发送失败: ${error.message}`, false, '系统');
-      
-      // 如果发送失败，使用模拟模式
       addMessage(inputMessage, false, '我');
       setInputMessage('');
-      
       setTimeout(() => {
         addMessage(`模拟回复: "${inputMessage}"`, true, deviceName || '其他用户');
       }, 1000);
@@ -529,7 +598,32 @@ function App() {
             </div>
           </div>
         </header>
-
+        <div style={{padding: '12px 24px', display: 'flex', gap: 16}}>
+          <button className={chatMode==='bluetooth' ? 'btn btn-primary' : 'btn btn-outline'} onClick={()=>setChatMode('bluetooth')}>蓝牙聊天</button>
+          <button className={chatMode==='lan' ? 'btn btn-primary' : 'btn btn-outline'} onClick={()=>setChatMode('lan')}>局域网扫码聊天</button>
+        </div>
+        {chatMode==='lan' && (
+          <div style={{padding: 24}}>
+            <div style={{marginBottom: 16}}>
+              <button className="btn btn-primary" onClick={()=>setShowQr(!showQr)}>{showQr?'隐藏二维码':'生成二维码(作为房主)'}</button>
+              <button className="btn btn-secondary" style={{marginLeft: 12}} onClick={startScan}>扫码加入(作为访客)</button>
+            </div>
+            {showQr && (
+              <div style={{marginBottom: 16}}>
+                <QRCode value={getLanQrValue()} size={200} />
+                <div style={{marginTop: 8, fontSize: 12, color: '#888'}}>让另一台电脑扫码此二维码</div>
+                <div style={{marginTop: 8, fontSize: 12, color: '#888'}}>{getLanQrValue()}</div>
+              </div>
+            )}
+            {showScan && (
+              <div style={{marginBottom: 16}}>
+                <div id="qr-reader" style={{width: 250, height: 250, margin: '0 auto'}}></div>
+                <button className="btn btn-outline" onClick={stopScan}>停止扫码</button>
+                {scanError && <div style={{color: 'red'}}>{scanError}</div>}
+              </div>
+            )}
+          </div>
+        )}
         <div className="main-content">
           <div className="sidebar">
             <div className="connection-controls">
