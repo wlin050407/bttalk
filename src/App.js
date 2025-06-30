@@ -50,6 +50,7 @@ function App() {
   const [userId] = useState(generateUserId());
   const [browserInfo, setBrowserInfo] = useState(checkBrowserCompatibility());
   const [availableDevices, setAvailableDevices] = useState([]);
+  const [localDeviceInfo, setLocalDeviceInfo] = useState(null);
   
   const bluetoothDevice = useRef(null);
   const bluetoothServer = useRef(null);
@@ -395,6 +396,61 @@ function App() {
     };
   }, []);
 
+  // 获取本地设备信息
+  const getLocalDeviceInfo = async () => {
+    try {
+      if (!navigator.bluetooth) {
+        throw new Error('您的浏览器不支持Web Bluetooth API');
+      }
+
+      setStatus('正在获取设备信息...');
+      addMessage('正在获取本地设备蓝牙信息...', false, '系统');
+
+      // 尝试连接到一个简单的设备来获取本地信息
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: []
+      });
+
+      if (device) {
+        const deviceInfo = {
+          id: device.id,
+          name: device.name || '未知设备',
+          uuids: device.uuids || [],
+          deviceClass: device.deviceClass || '未知',
+          vendorIdSource: device.vendorIdSource || '未知',
+          vendorId: device.vendorId || '未知',
+          productId: device.productId || '未知',
+          productVersion: device.productVersion || '未知'
+        };
+
+        setLocalDeviceInfo(deviceInfo);
+        addMessage(`本地设备信息：`, false, '系统');
+        addMessage(`设备ID: ${deviceInfo.id}`, false, '系统');
+        addMessage(`设备名称: ${deviceInfo.name}`, false, '系统');
+        addMessage(`设备类: ${deviceInfo.deviceClass}`, false, '系统');
+        
+        // 断开连接，因为我们只是获取信息
+        if (device.gatt.connected) {
+          await device.gatt.disconnect();
+        }
+        
+        setStatus('设备信息已获取');
+        addMessage('设备信息获取完成！', false, '系统');
+      }
+      
+    } catch (error) {
+      console.error('获取设备信息失败:', error);
+      if (error.name === 'NotFoundError') {
+        setStatus('未找到蓝牙设备');
+        addMessage('未找到蓝牙设备。请确保蓝牙已开启', false, '系统');
+      } else {
+        setStatus(`获取设备信息失败: ${error.message}`);
+        addMessage(`获取设备信息失败: ${error.message}`, false, '系统');
+      }
+    }
+  };
+
   // 如果不支持Web Bluetooth API，显示兼容性提示
   if (!browserInfo.isSupported) {
     return (
@@ -507,6 +563,13 @@ function App() {
                   >
                     自动搜索
                   </button>
+                  <button 
+                    onClick={getLocalDeviceInfo} 
+                    className="btn btn-outline"
+                    disabled={isScanning}
+                  >
+                    获取设备信息
+                  </button>
                 </div>
               ) : (
                 <button onClick={disconnect} className="btn btn-danger">
@@ -539,6 +602,34 @@ function App() {
                       <span className="peer-name">{peer.name}</span>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {localDeviceInfo && (
+              <div className="peers-section">
+                <h3>本地设备信息</h3>
+                <div className="device-info">
+                  <div className="info-item">
+                    <span className="info-label">设备ID:</span>
+                    <span className="info-value">{localDeviceInfo.id}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">设备名称:</span>
+                    <span className="info-value">{localDeviceInfo.name}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">设备类:</span>
+                    <span className="info-value">{localDeviceInfo.deviceClass}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">厂商ID:</span>
+                    <span className="info-value">{localDeviceInfo.vendorId}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">产品ID:</span>
+                    <span className="info-value">{localDeviceInfo.productId}</span>
+                  </div>
                 </div>
               </div>
             )}

@@ -430,6 +430,7 @@
             <button class="btn btn-primary" onclick="startAdvertising()">开始广播</button>
             <button class="btn btn-secondary" onclick="scanForUsers()">搜索用户</button>
             <button class="btn btn-outline" onclick="startAutoSearch()">自动搜索</button>
+            <button class="btn btn-outline" onclick="getLocalDeviceInfo()" ${isScanning ? 'disabled' : ''}>获取设备信息</button>
         </div>
 
         <div class="chat-area">
@@ -618,6 +619,7 @@
                     <button class="btn btn-secondary" onclick="scanForUsers()" ${isScanning ? 'disabled' : ''}>${isScanning ? '搜索中...' : '搜索聊天用户'}</button>
                     <button class="btn btn-outline" onclick="scanAllDevices()" ${isScanning ? 'disabled' : ''}>${isScanning ? '搜索中...' : '搜索所有设备'}</button>
                     <button class="btn btn-outline" onclick="startAutoSearch()" ${isScanning ? 'disabled' : ''}>自动搜索</button>
+                    <button class="btn btn-outline" onclick="getLocalDeviceInfo()" ${isScanning ? 'disabled' : ''}>获取设备信息</button>
                 `;
             } else {
                 controls.innerHTML = `
@@ -903,6 +905,62 @@
                 sendMessage();
             }
         });
+
+        // 获取本地设备信息
+        async function getLocalDeviceInfo() {
+            try {
+                if (!navigator.bluetooth) {
+                    throw new Error('您的浏览器不支持Web Bluetooth API');
+                }
+
+                updateStatus('正在获取设备信息...');
+                addMessage('正在获取本地设备蓝牙信息...', false, '系统');
+
+                // 尝试连接到一个简单的设备来获取本地信息
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true,
+                    optionalServices: []
+                });
+
+                if (device) {
+                    const deviceInfo = {
+                        id: device.id,
+                        name: device.name || '未知设备',
+                        uuids: device.uuids || [],
+                        deviceClass: device.deviceClass || '未知',
+                        vendorIdSource: device.vendorIdSource || '未知',
+                        vendorId: device.vendorId || '未知',
+                        productId: device.productId || '未知',
+                        productVersion: device.productVersion || '未知'
+                    };
+
+                    addMessage(`本地设备信息：`, false, '系统');
+                    addMessage(`设备ID: ${deviceInfo.id}`, false, '系统');
+                    addMessage(`设备名称: ${deviceInfo.name}`, false, '系统');
+                    addMessage(`设备类: ${deviceInfo.deviceClass}`, false, '系统');
+                    addMessage(`厂商ID: ${deviceInfo.vendorId}`, false, '系统');
+                    addMessage(`产品ID: ${deviceInfo.productId}`, false, '系统');
+                    
+                    // 断开连接，因为我们只是获取信息
+                    if (device.gatt.connected) {
+                        await device.gatt.disconnect();
+                    }
+                    
+                    updateStatus('设备信息已获取');
+                    addMessage('设备信息获取完成！', false, '系统');
+                }
+                
+            } catch (error) {
+                console.error('获取设备信息失败:', error);
+                if (error.name === 'NotFoundError') {
+                    updateStatus('未找到蓝牙设备');
+                    addMessage('未找到蓝牙设备。请确保蓝牙已开启', false, '系统');
+                } else {
+                    updateStatus(`获取设备信息失败: ${error.message}`);
+                    addMessage(`获取设备信息失败: ${error.message}`, false, '系统');
+                }
+            }
+        }
 
         // 初始化应用
         init();

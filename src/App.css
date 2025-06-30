@@ -217,6 +217,41 @@ body {
   font-weight: 500;
 }
 
+/* 设备信息样式 */
+.device-info {
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 0.8rem;
+  color: #333;
+  font-family: 'Monaco', 'Menlo', monospace;
+  word-break: break-all;
+  text-align: right;
+  max-width: 60%;
+}
+
 /* Chat Area */
 .chat-area {
   flex: 1;
