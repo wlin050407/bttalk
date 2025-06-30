@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BT Talk Mobile - 移动端聊天设备</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .status-panel {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .status-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+            box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
+        }
+
+        .status-indicator.connected {
+            background: #28a745;
+            box-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+        }
+
+        .status-text {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .device-info {
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .chat-container {
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8f9fa;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #6c757d;
+            padding: 40px 20px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+        }
+
+        .message.sent {
+            justify-content: flex-end;
+        }
+
+        .message.received {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 80%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            position: relative;
+        }
+
+        .message.sent .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.received .message-content {
+            background: white;
+            color: #495057;
+            border: 1px solid #e9ecef;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-content p {
+            margin: 0 0 5px 0;
+            word-wrap: break-word;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+
+        .input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .send-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 80px;
+        }
+
+        .send-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .info-panel {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .info-panel h3 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .info-panel ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .info-panel li {
+            padding: 6px 0;
+            color: #6c757d;
+            position: relative;
+            padding-left: 20px;
+            font-size: 0.9rem;
+        }
+
+        .info-panel li:before {
+            content: "•";
+            color: #667eea;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>📱 BT Talk Mobile</h1>
+            <p>移动端聊天设备</p>
+        </header>
+
+        <div class="status-panel">
+            <div class="status-display">
+                <span class="status-indicator" id="statusIndicator"></span>
+                <span class="status-text" id="statusText">等待连接</span>
+            </div>
+            <div class="device-info">
+                设备名称: BT Talk Mobile
+            </div>
+        </div>
+
+        <div class="chat-container">
+            <div class="messages" id="messages">
+                <div class="empty-state">
+                    <p>等待连接...</p>
+                    <p>请在其他设备上搜索"BT Talk Mobile"</p>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <input
+                    type="text"
+                    id="messageInput"
+                    placeholder="输入消息..."
+                    disabled
+                    class="message-input"
+                />
+                <button
+                    id="sendBtn"
+                    class="send-btn"
+                    disabled
+                >
+                    发送
+                </button>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <h3>设备说明</h3>
+            <ul>
+                <li>这是一个移动端聊天设备</li>
+                <li>其他设备可以搜索并连接此设备</li>
+                <li>支持实时消息收发</li>
+                <li>无需网络连接，仅使用蓝牙</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // 模拟蓝牙设备功能
+        let isConnected = false;
+        let messages = [];
+        let connectedDevice = null;
+
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const messagesContainer = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+
+        function updateStatus(connected, text) {
+            isConnected = connected;
+            statusIndicator.className = `status-indicator ${connected ? 'connected' : ''}`;
+            statusText.textContent = text;
+            
+            messageInput.disabled = !connected;
+            sendBtn.disabled = !connected;
+        }
+
+        function addMessage(text, isReceived = false) {
+            const message = {
+                id: Date.now(),
+                text,
+                isReceived,
+                timestamp: new Date().toLocaleTimeString()
+            };
+            messages.push(message);
+            renderMessages();
+        }
+
+        function renderMessages() {
+            if (messages.length === 0) {
+                messagesContainer.innerHTML = `
+                    <div class="empty-state">
+                        <p>还没有消息</p>
+                        <p>等待其他设备连接...</p>
+                    </div>
+                `;
+                return;
+            }
+
+            messagesContainer.innerHTML = messages.map(message => `
+                <div class="message ${message.isReceived ? 'received' : 'sent'}">
+                    <div class="message-content">
+                        <p>${message.text}</p>
+                        <span class="message-time">${message.timestamp}</span>
+                    </div>
+                </div>
+            `).join('');
+
+            // 滚动到底部
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text || !isConnected) return;
+
+            addMessage(text, false);
+            messageInput.value = '';
+
+            // 模拟发送消息给连接的设备
+            if (connectedDevice) {
+                setTimeout(() => {
+                    // 模拟接收回复
+                    addMessage(`收到你的消息: "${text}"`, true);
+                }, 1000);
+            }
+        }
+
+        // 模拟连接过程
+        function simulateConnection() {
+            updateStatus(false, '正在连接...');
+            
+            setTimeout(() => {
+                updateStatus(true, '已连接');
+                connectedDevice = { name: 'Web Client' };
+                addMessage('设备已连接，可以开始聊天了！', true);
+            }, 2000);
+        }
+
+        // 事件监听
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // 模拟自动连接（实际应用中这里会是真实的蓝牙连接）
+        setTimeout(simulateConnection, 3000);
+
+        // 添加一些示例消息
+        setTimeout(() => {
+            if (isConnected) {
+                addMessage('欢迎使用BT Talk Mobile！', true);
+                addMessage('这是一个移动端聊天设备演示', true);
+            }
+        }, 4000);
+    </script>
+</body>
+</html> 
