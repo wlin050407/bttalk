@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/bttalk/static/css/main.a5789df8.css",
+    "main.js": "/bttalk/static/js/main.4706ae71.js",
+    "index.html": "/bttalk/index.html",
+    "main.a5789df8.css.map": "/bttalk/static/css/main.a5789df8.css.map",
+    "main.4706ae71.js.map": "/bttalk/static/js/main.4706ae71.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.a5789df8.css",
+    "static/js/main.4706ae71.js"
+  ]
+}
